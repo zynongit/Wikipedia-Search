@@ -74,3 +74,37 @@ h1 {
 .result-link:hover {
     text-decoration: underline;
 }
+#articleContent {
+    margin-top: 20px;
+}
+
+#backButton {
+    padding: 8px 15px;
+    background-color: #36c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 15px;
+}
+
+#backButton:hover {
+    background-color: #447ff5;
+}
+
+#articleText {
+    line-height: 1.6;
+}
+
+#articleText p {
+    margin-bottom: 15px;
+}
+
+#articleText a {
+    color: #0645ad;
+    text-decoration: none;
+}
+
+#articleText a:hover {
+    text-decoration: underline;
+}
