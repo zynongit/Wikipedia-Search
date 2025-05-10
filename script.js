@@ -1,42 +1,58 @@
-document.getElementById('searchButton').addEventListener('click', searchWikipedia);
-document.getElementById('backButton').addEventListener('click', showResults);
+// Elementos DOM
+const searchButton = document.getElementById('searchButton');
+const backButton = document.getElementById('backButton');
+const searchInput = document.getElementById('searchInput');
+const languageSelect = document.getElementById('languageSelect');
+const searchResults = document.getElementById('searchResults');
+const articleContent = document.getElementById('articleContent');
+const articleTitle = document.getElementById('articleTitle');
+const articleText = document.getElementById('articleText');
 
-// Permitir busca com Enter
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        searchWikipedia();
-    }
+// Event Listeners
+searchButton.addEventListener('click', searchWikipedia);
+backButton.addEventListener('click', showResults);
+searchInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') searchWikipedia();
+});
+
+// Variável para armazenar o idioma atual
+let currentLanguage = languageSelect.value;
+
+// Observar mudanças no seletor de idioma
+languageSelect.addEventListener('change', function() {
+    currentLanguage = this.value;
+    // Atualiza o placeholder conforme o idioma selecionado
+    searchInput.placeholder = `Search ${this.options[this.selectedIndex].text} Wikipedia...`;
 });
 
 function searchWikipedia() {
-    const searchTerm = document.getElementById('searchInput').value.trim();
-    const resultsDiv = document.getElementById('searchResults');
+    const searchTerm = searchInput.value.trim();
     
     if (!searchTerm) {
-        resultsDiv.innerHTML = '<p>Please enter a search term</p>';
+        searchResults.innerHTML = '<p>Please enter a search term</p>';
         return;
     }
     
-    resultsDiv.innerHTML = '<p>Searching...</p>';
+    searchResults.innerHTML = '<p>Searching...</p>';
     
-    // Wikipedia API para busca
-    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&format=json&origin=*`;
+    const searchUrl = `https://${currentLanguage}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&format=json&origin=*`;
     
     fetch(searchUrl)
         .then(response => response.json())
         .then(data => {
+            if (data.error) {
+                throw new Error(data.error.info);
+            }
             displayResults(data.query.search);
         })
         .catch(error => {
-            resultsDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+            searchResults.innerHTML = `<p>Error: ${error.message}</p>`;
         });
 }
 
 function displayResults(results) {
-    const resultsDiv = document.getElementById('searchResults');
-    
     if (results.length === 0) {
-        resultsDiv.innerHTML = '<p>No results found</p>';
+        searchResults.innerHTML = '<p>No results found</p>';
         return;
     }
     
@@ -51,9 +67,8 @@ function displayResults(results) {
         `;
     });
     
-    resultsDiv.innerHTML = html;
+    searchResults.innerHTML = html;
     
-    // Adicionar event listeners aos botões
     document.querySelectorAll('.view-article').forEach(button => {
         button.addEventListener('click', function() {
             const title = this.parentElement.getAttribute('data-title');
@@ -63,48 +78,64 @@ function displayResults(results) {
 }
 
 function loadArticle(title) {
-    const articleContentDiv = document.getElementById('articleContent');
-    const articleTitle = document.getElementById('articleTitle');
-    const articleText = document.getElementById('articleText');
-    const resultsDiv = document.getElementById('searchResults');
-    
-    resultsDiv.style.display = 'none';
-    articleContentDiv.style.display = 'block';
+    searchResults.style.display = 'none';
+    articleContent.style.display = 'block';
     articleTitle.textContent = title;
     articleText.innerHTML = '<p>Loading article...</p>';
     
-    // Wikipedia API para conteúdo do artigo
-    const articleUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&format=json&origin=*`;
+    const articleUrl = `https://${currentLanguage}.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&format=json&origin=*`;
     
     fetch(articleUrl)
         .then(response => response.json())
         .then(data => {
+            if (data.error) {
+                throw new Error(data.error.info);
+            }
+            
             articleText.innerHTML = data.parse.text['*'];
-            
-            // Remover elementos indesejados (como tabelas de navegação)
-            const unwantedElements = articleText.querySelectorAll('.infobox, .navbox, .metadata, .hatnote');
-            unwantedElements.forEach(el => el.remove());
-            
-            // Corrigir links para abrir na mesma página
-            const links = articleText.querySelectorAll('a');
-            links.forEach(link => {
-                if (link.href.includes('/wiki/')) {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const articleTitle = this.href.split('/wiki/')[1];
-                        loadArticle(decodeURIComponent(articleTitle));
-                    });
-                } else {
-                    link.target = '_blank';
-                }
-            });
+            cleanArticleContent();
+            setupInternalLinks();
         })
         .catch(error => {
             articleText.innerHTML = `<p>Error loading article: ${error.message}</p>`;
         });
 }
 
+function cleanArticleContent() {
+    // Remove elementos indesejados
+    const unwantedSelectors = [
+        '.infobox', '.navbox', '.metadata', '.hatnote', 
+        '.mw-editsection', '.reference', '.mw-empty-elt'
+    ];
+    
+    unwantedSelectors.forEach(selector => {
+        articleText.querySelectorAll(selector).forEach(el => el.remove());
+    });
+}
+
+function setupInternalLinks() {
+    const links = articleText.querySelectorAll('a');
+    
+    links.forEach(link => {
+        // Verifica se é um link interno da Wikipedia
+        if (link.href.includes(`https://${currentLanguage}.wikipedia.org/wiki/`)) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const articlePath = this.href.split(`https://${currentLanguage}.wikipedia.org/wiki/`)[1];
+                loadArticle(decodeURIComponent(articlePath));
+            });
+        } else {
+            // Links externos abrem em nova aba
+            link.target = '_blank';
+        }
+    });
+}
+
 function showResults() {
-    document.getElementById('searchResults').style.display = 'block';
+    searchResults.style.display = 'block';
+    articleContent.style.display = 'none';
+    // Rolagem suave para o topo dos resultados
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}Results').style.display = 'block';
     document.getElementById('articleContent').style.display = 'none';
 }
