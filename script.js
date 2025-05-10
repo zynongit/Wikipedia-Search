@@ -139,3 +139,93 @@ function showResults() {
 }Results').style.display = 'block';
     document.getElementById('articleContent').style.display = 'none';
 }
+// ... (código anterior permanece o mesmo)
+
+function displayResults(results) {
+    if (results.length === 0) {
+        searchResults.innerHTML = '<p>Nenhum resultado encontrado</p>';
+        return;
+    }
+    
+    let html = '<h2>Resultados da Pesquisa</h2>';
+    results.forEach(result => {
+        // Garantir que o snippet não esteja em inglês (às vezes a API retorna errado)
+        let snippet = result.snippet;
+        if (currentLanguage !== 'en' && snippet.includes('may refer to:')) {
+            snippet = '(Clique para ver o artigo completo)';
+        }
+        
+        html += `
+            <div class="result-item" data-title="${result.title}">
+                <h3 class="result-title">${result.title}</h3>
+                <p class="result-snippet">${snippet}</p>
+                <button class="view-article">Ver Artigo</button>
+            </div>
+        `;
+    });
+    
+    searchResults.innerHTML = html;
+    
+    // ... (restante do código permanece o mesmo)
+}
+
+function loadArticle(title) {
+    searchResults.style.display = 'none';
+    articleContent.style.display = 'block';
+    articleTitle.textContent = title;
+    articleText.innerHTML = '<p>Carregando artigo...</p>';
+    
+    // Adicionar parâmetro para garantir o idioma correto
+    const articleUrl = `https://${currentLanguage}.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(title)}&format=json&origin=*&uselang=${currentLanguage}`;
+    
+    fetch(articleUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                // Tentar fallback para a página de desambiguação se houver erro
+                if (data.error.code === 'missingtitle') {
+                    return loadDisambiguationPage(title);
+                }
+                throw new Error(data.error.info);
+            }
+            
+            articleText.innerHTML = data.parse.text['*'];
+            cleanArticleContent();
+            setupInternalLinks();
+        })
+        .catch(error => {
+            articleText.innerHTML = `<p>Erro ao carregar artigo: ${error.message}</p>`;
+        });
+}
+
+// Nova função para lidar com páginas de desambiguação
+function loadDisambiguationPage(title) {
+    const disambigUrl = `https://${currentLanguage}.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=links&pllimit=500&format=json&origin=*`;
+    
+    fetch(disambigUrl)
+        .then(response => response.json())
+        .then(data => {
+            const pages = data.query.pages;
+            const pageId = Object.keys(pages)[0];
+            
+            if (pages[pageId].links) {
+                let html = '<h3>Pode se referir a:</h3><ul>';
+                pages[pageId].links.forEach(link => {
+                    html += `<li><a href="#" class="disambig-link" data-title="${link.title}">${link.title}</a></li>`;
+                });
+                html += '</ul>';
+                articleText.innerHTML = html;
+                
+                document.querySelectorAll('.disambig-link').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        loadArticle(this.getAttribute('data-title'));
+                    });
+                });
+            } else {
+                throw new Error('Artigo não encontrado neste idioma');
+            }
+        });
+}
+
+// ... (restante do código permanece o mesmo)
