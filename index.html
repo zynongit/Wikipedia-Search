@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,7 +12,7 @@
         <div class="controls">
             <select id="languageSelect">
                 <option value="en">English</option>
-                <option value="pt">Português</option>
+                <option value="pt" selected>Português</option>
                 <option value="es">Español</option>
                 <option value="fr">Français</option>
                 <option value="de">Deutsch</option>
@@ -23,13 +23,13 @@
                 <option value="ar">العربية</option>
             </select>
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search Wikipedia...">
-                <button id="searchButton">Search</button>
+                <input type="text" id="searchInput" placeholder="Pesquisar na Wikipedia...">
+                <button id="searchButton">Pesquisar</button>
             </div>
         </div>
         <div id="searchResults"></div>
         <div id="articleContent" style="display: none;">
-            <button id="backButton">← Back to results</button>
+            <button id="backButton">← Voltar aos resultados</button>
             <h2 id="articleTitle"></h2>
             <div id="articleText"></div>
         </div>
